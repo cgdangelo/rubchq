@@ -3,6 +3,7 @@
 require 'net/http'
 require 'net/https'
 require 'uri'
+require 'rexml/document'
 
 class Basecamp
     attr_accessor :org, :apikey
@@ -34,7 +35,41 @@ class Rubchq
         response
     end
 
-    def fetchAccountInfo
-        getResponse('account.xml')    
+    # Accounts
+
+    def fetchAccountInfo (parse = true)
+        rawXml = getResponse('account.xml')
+
+        if parse 
+            parseAccountInfo(rawXml.body)
+        else
+            rawXml
+        end
+    end
+
+
+    # Projects
+
+    def fetchProjectList (parse = true)
+        rawXml = getResponse('projects.xml')
+        
+        if parse 
+            parseProjectList(rawXml.body)
+        else
+            rawXml
+        end
+    end
+
+    def parseProjectList (data)
+        xmlDoc = REXML::Document.new(data)
+        parsedData = []
+        projectData = {}
+
+        xmlDoc.elements.each('projects/project/*') do |element|
+            projectData[element.name] = element.text
+            parsedData[element.parent.elements['id'].text.to_i] = projectData
+        end
+
+        parsedData
     end
 end
