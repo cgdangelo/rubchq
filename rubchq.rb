@@ -63,13 +63,20 @@ class Rubchq
     def parseProjectList (data)
         xmlDoc = REXML::Document.new(data)
         parsedData = []
-        projectData = {}
 
-        xmlDoc.elements.each('projects/project/*') do |element|
-            projectData[element.name] = element.text
-            parsedData[element.parent.elements['id'].text.to_i] = projectData
+        xmlDoc.elements.each('projects/project') do |project|
+            projectData = {}
+            projectId = project.elements["id"].text.to_i unless project.elements["id"].nil?
+
+            puts project.elements["id"]
+
+            project.elements.each do |element| 
+                projectData[element.name] = element.text
+            end
+
+            parsedData[projectId] = projectData
         end
 
-        parsedData
+        return parsedData
     end
 end
