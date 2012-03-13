@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'net/http'
+require 'net/https'
 require 'uri'
 
 class Basecamp
@@ -21,13 +22,16 @@ class Rubchq
 
     def getResponse (relative_uri)
         uri = URI('https://' + @bchqCreds.org + '.basecamphq.com/' + relative_uri)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-        Net::HTTP.start(uri.host, 80, nil, nil, @bchqCreds.apikey, '') do |http|
-            request = Net::HTTP::Get.new uri.request_uri
-            response = http.request request
-            puts response.inspect
-            return response
-        end
+        request = Net::HTTP::Get.new(uri.request_uri)
+        request.basic_auth @bchqCreds.apikey, ''
+
+        response = http.request(request)
+
+        response
     end
 
     def fetchAccountInfo
