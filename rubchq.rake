@@ -104,7 +104,7 @@ def get_resource_from_user
 end
 
 def add_comment_to_message(resource_id, msg)
-  comment = Basecamp::Comment.new(:post_id => resource_id)
+  comment = Basecamp::Comment.new(:post_id => resource_id, :use_textile => 1)
   comment.body = "<pre>" + msg + "</pre>"
   comment.save
 end
@@ -116,7 +116,7 @@ def add_comment_to_todo_item(resource_id, msg)
 end
 
 def add_comment_to_milestone(resource_id, msg)
-  comment = Basecamp::Comment.new(:milestone_id => resource_id)
+  comment = Basecamp::Comment.new(:milestone_id => resource_id, :use_textile => 1)
   comment.body = "<pre>" + msg + "</pre>"
   comment.save
 end
