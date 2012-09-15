@@ -2,21 +2,23 @@ require 'basecamp'
 
 namespace :rubchq do
   desc "Push commits to Basecamp resources."
-  task :push do 
+  task :push, :sha do |t, args|
+    sha = args[:sha] || 'HEAD'
+    commit_msg = `git --no-pager log --date=rfc -1 #{sha}`.chomp
+    
     login
-    projects
 
-    current_project = get_current_project
-    puts "* Using project ##{current_project[0]} \"#{current_project[1]}\""
+    resource_info = get_resource_from_commit(sha) || get_resource_from_user
 
-    puts "* Resource type: (t)odo, (m)essage?"
-    resource_type = STDIN.gets.chomp
-
-    case resource_type
+    case resource_info[0]
+    when "m"
+      add_comment_to_message(resource_info[1], commit_msg)
     when "t"
-      puts "* Fetching todo items for project..."
-      todos = get_todo_items_on_project(current_project[0])
+      add_comment_to_todo_item(resource_info[1], commit_msg)
+    when "ms"
+      add_comment_to_milestone(resource_info[1], commit_msg)
     end
+
   end
 end
 
@@ -63,5 +65,58 @@ def get_todo_items_on_project(project)
     todo_items << Basecamp::TodoItem.find(:all, :params => { :todo_list_id => todo_list.id})
   end
 
-  todo_items
+  todo_items.flatten
+end
+
+def get_messages_on_project(project)
+  Basecamp::Message.find(:all, :params => { :project_id => project })
+end
+
+def get_resource_from_commit(sha)
+  /bc(\w+)#(\d+)/.match(`git --no-pager log -1 --format=%B #{sha}`).to_a.slice(1,2)
+end
+
+def get_resource_from_user
+  resource_info = []
+
+  current_project = get_current_project
+  puts "* Using project ##{current_project[0]} \"#{current_project[1]}\""
+
+  puts "* Resource type: (t)odo, (m)essage?"
+  resource_type = STDIN.gets.chomp
+
+  case resource_type
+  when "t"
+    puts "* Fetching todo items for project..."
+    resources = get_todo_items_on_project(current_project[0])
+    resource_info[0] = "t"
+  when "m"
+    puts "* Fetching messages for project..."
+    resources = get_messages_on_project(current_project[0])
+    resource_info[0] = "m"
+  end
+
+  index = 1
+  resources.each do |resource|
+    title = resource.title || resource.content
+    puts "(#{index}) \"#{title}\" by #{resource.author_name} [##{resource.id}]"
+  end
+end
+
+def add_comment_to_message(resource_id, msg)
+  comment = Basecamp::Comment.new(:post_id => resource_id)
+  comment.body = "<pre>" + msg + "</pre>"
+  comment.save
+end
+
+def add_comment_to_todo_item(resource_id, msg)
+  comment = Basecamp::Comment.new(:todo_item_id => resource_id, :use_textile => 1)
+  comment.body = "<pre>" + msg + "</pre>"
+  comment.save
+end
+
+def add_comment_to_milestone(resource_id, msg)
+  comment = Basecamp::Comment.new(:milestone_id => resource_id)
+  comment.body = "<pre>" + msg + "</pre>"
+  comment.save
 end
